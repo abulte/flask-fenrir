@@ -2,8 +2,10 @@
 fenrir-api — Drop-in Flask API for LLM agent access to SQLModel web apps.
 
 Usage:
-    from fenrir_api import create_fenrir_bp
+    from fenrir_api import create_fenrir_bp, secure_app
+
     app.register_blueprint(create_fenrir_bp(engine))
+    secure_app(app)
 """
 
 from __future__ import annotations
@@ -13,11 +15,11 @@ import re
 from functools import wraps
 from pathlib import Path
 
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, Flask, Response, current_app, jsonify, request
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
 
-__all__ = ["create_fenrir_bp"]
+__all__ = ["create_fenrir_bp", "secure_app"]
 
 DEFAULT_ROW_LIMIT = 1000
 
@@ -49,6 +51,62 @@ def _require_auth(f):
         return f(*args, **kwargs)
 
     return wrapper
+
+
+def secure_app(
+    app: Flask,
+    *,
+    skip_paths: list[str] | None = None,
+    api_key_header: str | None = None,
+) -> None:
+    """Add basic auth to all routes except /fenrir/ and static files.
+
+    Uses FENRIR_API_KEY as the password (any username accepted).
+    Skipped entirely when app.debug is True.
+
+    Args:
+        app: Flask application.
+        skip_paths: Additional path prefixes to skip auth for (e.g. ["/health"]).
+        api_key_header: Optional header name for API key auth (e.g. "X-API-Key").
+            When set, requests with this header matching FENRIR_API_KEY are
+            allowed through without basic auth.
+    """
+    _skip = ["/fenrir/", "/static/"]
+    if skip_paths:
+        _skip.extend(skip_paths)
+
+    @app.before_request
+    def _basic_auth_check():
+        if app.debug:
+            return
+
+        # Skip excluded paths
+        path = request.path
+        if path == "/" or any(path.startswith(p) for p in _skip):
+            return
+        if request.endpoint == "static":
+            return
+
+        api_key = os.environ.get("FENRIR_API_KEY")
+        if not api_key:
+            return Response("Not configured", 503)
+
+        # Check API key header if configured (for MCP / programmatic access)
+        if api_key_header:
+            header_val = request.headers.get(api_key_header)
+            if header_val and header_val == api_key:
+                return
+
+        # Check basic auth — any username, password must match FENRIR_API_KEY
+        auth = request.authorization
+        if auth and auth.password == api_key:
+            return
+
+        return Response(
+            "Authentication required",
+            401,
+            {"WWW-Authenticate": 'Basic realm="Login"'},
+        )
 
 
 def _read_fenrir_md() -> str | None:

@@ -16,11 +16,17 @@ from fenrir_api import create_fenrir_bp
 app.register_blueprint(create_fenrir_bp(engine))
 ```
 
+```python
+from fenrir_api import secure_app
+
+secure_app(app)  # optional — adds basic auth to the whole app
+```
+
 ```bash
 dokku config:set myapp FENRIR_API_KEY=$(openssl rand -hex 32)
 ```
 
-That's it.
+That's it. One env var for everything — bearer token for LLM agents, basic auth password for browser access.
 
 ## What it does
 
@@ -34,9 +40,20 @@ Registers a `/fenrir/` blueprint with four endpoints, all behind bearer token au
 
 ### Authentication
 
-Every request requires `Authorization: Bearer <key>` where the key matches the `FENRIR_API_KEY` environment variable. If the env var isn't set, all requests return 401 (fail closed).
+`FENRIR_API_KEY` is the single secret for your app.
 
-When `FLASK_DEBUG` is on, auth is skipped entirely for convenience during local development.
+**Fenrir endpoints** (`/fenrir/*`) require `Authorization: Bearer <key>`.
+
+**`secure_app(app)`** (optional) adds basic auth to all other routes — any username, password must match `FENRIR_API_KEY`. This replaces Dokku's `http-auth` so everything is managed in one place.
+
+Both are skipped when `FLASK_DEBUG` is on. If the env var isn't set, everything returns 401/503 (fail closed).
+
+```python
+# Options:
+secure_app(app)                                    # basic auth on all routes
+secure_app(app, skip_paths=["/health", "/webhook"]) # skip specific paths
+secure_app(app, api_key_header="X-API-Key")         # also accept API key header
+```
 
 ### FENRIR.md
 
@@ -70,8 +87,7 @@ It serves a FENRIR.md file at GET /fenrir/ to give the LLM domain
 context it can't infer from the schema alone. That's the file you're
 writing now.
 
-The API is at /fenrir/. The key is in the FENRIR_API_KEY env var, passed
-as Authorization: Bearer <key> in the request headers.
+The API is at /fenrir/.
 
 Read the codebase to understand the app's models, business logic, and
 domain. Then hit GET /fenrir/schema and POST /fenrir/query to see what

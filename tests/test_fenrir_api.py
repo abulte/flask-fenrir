@@ -12,7 +12,7 @@ from flask import Flask
 from sqlalchemy import create_engine
 from sqlmodel import Field, Session, SQLModel
 
-from fenrir_api import create_fenrir_bp
+from fenrir_api import create_fenrir_bp, secure_app
 
 # ---------------------------------------------------------------------------
 # Models
@@ -272,4 +272,139 @@ class TestQuery:
         assert r.status_code == 422
 
 
+# ---------------------------------------------------------------------------
+# secure_app
+# ---------------------------------------------------------------------------
+
+
+class TestSecureApp:
+    """Tests for the secure_app() basic auth middleware."""
+
+    @pytest.fixture()
+    def secured_app(self, tmp_path):
+        engine = create_engine("sqlite://")
+        SQLModel.metadata.create_all(engine)
+
+        app = Flask(__name__, root_path=str(tmp_path))
+        app.config["TESTING"] = True
+        app.register_blueprint(create_fenrir_bp(engine))
+        secure_app(app)
+
+        @app.route("/dashboard")
+        def dashboard():
+            return "ok"
+
+        @app.route("/api/data")
+        def api_data():
+            return "ok"
+
+        os.environ["FENRIR_API_KEY"] = API_KEY
+        yield app
+        os.environ.pop("FENRIR_API_KEY", None)
+
+    @pytest.fixture()
+    def secured_client(self, secured_app):
+        return secured_app.test_client()
+
+    def _basic_auth_headers(self, password=API_KEY, username="anything"):
+        import base64
+        creds = base64.b64encode(f"{username}:{password}".encode()).decode()
+        return {"Authorization": f"Basic {creds}"}
+
+    # -- Basic auth on app routes --
+
+    def test_app_route_blocked_without_auth(self, secured_client):
+        r = secured_client.get("/dashboard")
+        assert r.status_code == 401
+        assert "WWW-Authenticate" in r.headers
+
+    def test_app_route_allowed_with_basic_auth(self, secured_client):
+        r = secured_client.get("/dashboard", headers=self._basic_auth_headers())
+        assert r.status_code == 200
+
+    def test_app_route_wrong_password(self, secured_client):
+        r = secured_client.get("/dashboard", headers=self._basic_auth_headers(password="wrong"))
+        assert r.status_code == 401
+
+    def test_any_username_accepted(self, secured_client):
+        r = secured_client.get("/dashboard", headers=self._basic_auth_headers(username="bob"))
+        assert r.status_code == 200
+
+    # -- Fenrir paths skip basic auth (use their own bearer auth) --
+
+    def test_fenrir_not_blocked_by_basic_auth(self, secured_client):
+        """Fenrir endpoints should not get a basic auth challenge — they use bearer."""
+        r = secured_client.get("/fenrir/", headers=auth_headers())
+        assert r.status_code == 200
+
+    def test_fenrir_without_any_auth_gets_bearer_401(self, secured_client):
+        """Fenrir without bearer token should return JSON 401, not basic auth challenge."""
+        r = secured_client.get("/fenrir/")
+        assert r.status_code == 401
+        data = r.get_json()
+        assert data is not None  # JSON response, not basic auth HTML
+
+    # -- Debug mode --
+
+    def test_debug_skips_basic_auth(self, secured_app):
+        secured_app.debug = True
+        with secured_app.test_client() as c:
+            r = c.get("/dashboard")
+            assert r.status_code == 200
+
+    # -- No env var --
+
+    def test_no_env_var_returns_503(self, secured_client):
+        os.environ.pop("FENRIR_API_KEY", None)
+        r = secured_client.get("/dashboard")
+        assert r.status_code == 503
+
+    # -- skip_paths --
+
+    def test_skip_paths(self, tmp_path):
+        engine = create_engine("sqlite://")
+        SQLModel.metadata.create_all(engine)
+
+        app = Flask(__name__, root_path=str(tmp_path))
+        app.config["TESTING"] = True
+        app.register_blueprint(create_fenrir_bp(engine))
+        secure_app(app, skip_paths=["/health"])
+
+        @app.route("/health")
+        def health():
+            return "ok"
+
+        os.environ["FENRIR_API_KEY"] = API_KEY
+        with app.test_client() as c:
+            r = c.get("/health")
+            assert r.status_code == 200
+        os.environ.pop("FENRIR_API_KEY", None)
+
+    # -- api_key_header --
+
+    def test_api_key_header(self, tmp_path):
+        engine = create_engine("sqlite://")
+        SQLModel.metadata.create_all(engine)
+
+        app = Flask(__name__, root_path=str(tmp_path))
+        app.config["TESTING"] = True
+        app.register_blueprint(create_fenrir_bp(engine))
+        secure_app(app, api_key_header="X-API-Key")
+
+        @app.route("/api/stuff")
+        def stuff():
+            return "ok"
+
+        os.environ["FENRIR_API_KEY"] = API_KEY
+        with app.test_client() as c:
+            # Basic auth still works
+            r = c.get("/api/stuff", headers=self._basic_auth_headers())
+            assert r.status_code == 200
+            # API key header also works
+            r = c.get("/api/stuff", headers={"X-API-Key": API_KEY})
+            assert r.status_code == 200
+            # Wrong API key header rejected
+            r = c.get("/api/stuff", headers={"X-API-Key": "wrong"})
+            assert r.status_code == 401
+        os.environ.pop("FENRIR_API_KEY", None)
 
