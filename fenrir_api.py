@@ -160,7 +160,17 @@ def create_fenrir_bp(engine: Engine, *, row_limit: int = DEFAULT_ROW_LIMIT) -> B
             return jsonify({"error": "only SELECT (or WITH ... SELECT) allowed — use /fenrir/execute for writes"}), 400
 
         try:
-            with engine.connect() as conn:
+            with engine.connect().execution_options(
+                postgresql_readonly=True,      # PostgreSQL
+                sqlite_raw_colnames=True,      # harmless on SQLite
+            ) as conn:
+                conn.begin()
+                # SET TRANSACTION READ ONLY works on PostgreSQL.
+                # SQLite doesn't support it, so we skip errors silently.
+                try:
+                    conn.execute(text("SET TRANSACTION READ ONLY"))
+                except Exception:
+                    pass
                 result = conn.execute(text(sql))
                 columns = list(result.keys())
                 rows = [list(r) for r in result.fetchmany(row_limit)]
@@ -168,6 +178,7 @@ def create_fenrir_bp(engine: Engine, *, row_limit: int = DEFAULT_ROW_LIMIT) -> B
                 # Check if there were more rows we didn't fetch
                 extra = result.fetchone()
                 truncated = extra is not None
+                conn.rollback()
         except Exception as exc:
             return jsonify({"error": str(exc)}), 422
 
