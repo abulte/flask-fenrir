@@ -57,7 +57,7 @@ def secure_app(
     app: Flask,
     *,
     skip_paths: list[str] | None = None,
-    api_key_header: str | None = None,
+    api_key_auth: dict[str, str] | None = None,
 ) -> None:
     """Add basic auth to all routes except /fenrir/ and static files.
 
@@ -67,9 +67,9 @@ def secure_app(
     Args:
         app: Flask application.
         skip_paths: Additional path prefixes to skip auth for (e.g. ["/health"]).
-        api_key_header: Optional header name for API key auth (e.g. "X-API-Key").
-            When set, requests with this header matching FENRIR_API_KEY are
-            allowed through without basic auth.
+        api_key_auth: Optional dict with "header" and "secret" keys for API key
+            auth (e.g. {"header": "X-API-Key", "secret": os.getenv("API_KEY")}).
+            Allows programmatic access (MCP, etc.) with a separate secret.
     """
     _skip = ["/fenrir/", "/static/"]
     if skip_paths:
@@ -92,9 +92,9 @@ def secure_app(
             return Response("Not configured", 503)
 
         # Check API key header if configured (for MCP / programmatic access)
-        if api_key_header:
-            header_val = request.headers.get(api_key_header)
-            if header_val and header_val == api_key:
+        if api_key_auth:
+            header_val = request.headers.get(api_key_auth["header"])
+            if header_val and header_val == api_key_auth["secret"]:
                 return
 
         # Check basic auth — any username, password must match FENRIR_API_KEY

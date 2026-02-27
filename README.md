@@ -50,9 +50,12 @@ Both are skipped when `FLASK_DEBUG` is on. If the env var isn't set, everything 
 
 ```python
 # Options:
-secure_app(app)                                    # basic auth on all routes
-secure_app(app, skip_paths=["/health", "/webhook"]) # skip specific paths
-secure_app(app, api_key_header="X-API-Key")         # also accept API key header
+secure_app(app)                                        # basic auth on all routes
+secure_app(app, skip_paths=["/health", "/webhook"])     # skip specific paths
+secure_app(app, api_key_auth={                          # also accept a separate API key
+    "header": "X-API-Key",
+    "secret": os.getenv("API_KEY"),
+})
 ```
 
 ### FENRIR.md

@@ -380,16 +380,18 @@ class TestSecureApp:
             assert r.status_code == 200
         os.environ.pop("FENRIR_API_KEY", None)
 
-    # -- api_key_header --
+    # -- api_key_auth --
 
-    def test_api_key_header(self, tmp_path):
+    def test_api_key_auth(self, tmp_path):
         engine = create_engine("sqlite://")
         SQLModel.metadata.create_all(engine)
+
+        MCP_SECRET = "mcp-secret-123"
 
         app = Flask(__name__, root_path=str(tmp_path))
         app.config["TESTING"] = True
         app.register_blueprint(create_fenrir_bp(engine))
-        secure_app(app, api_key_header="X-API-Key")
+        secure_app(app, api_key_auth={"header": "X-API-Key", "secret": MCP_SECRET})
 
         @app.route("/api/stuff")
         def stuff():
@@ -400,10 +402,13 @@ class TestSecureApp:
             # Basic auth still works
             r = c.get("/api/stuff", headers=self._basic_auth_headers())
             assert r.status_code == 200
-            # API key header also works
-            r = c.get("/api/stuff", headers={"X-API-Key": API_KEY})
+            # API key header works with its own secret
+            r = c.get("/api/stuff", headers={"X-API-Key": MCP_SECRET})
             assert r.status_code == 200
-            # Wrong API key header rejected
+            # FENRIR_API_KEY doesn't work as API key header
+            r = c.get("/api/stuff", headers={"X-API-Key": API_KEY})
+            assert r.status_code == 401
+            # Wrong secret rejected
             r = c.get("/api/stuff", headers={"X-API-Key": "wrong"})
             assert r.status_code == 401
         os.environ.pop("FENRIR_API_KEY", None)
