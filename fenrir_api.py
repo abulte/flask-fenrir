@@ -28,10 +28,16 @@ _READ_ONLY_RE = re.compile(
 
 
 def _require_auth(f):
-    """Reject requests unless Authorization header matches FENRIR_API_KEY."""
+    """Reject requests unless Authorization header matches FENRIR_API_KEY.
+
+    Auth is skipped entirely when the Flask app has DEBUG enabled.
+    """
 
     @wraps(f)
     def wrapper(*args, **kwargs):
+        if current_app.debug:
+            return f(*args, **kwargs)
+
         api_key = os.environ.get("FENRIR_API_KEY")
         if not api_key:
             return jsonify({"error": "FENRIR_API_KEY not configured"}), 401
@@ -157,7 +163,7 @@ def create_fenrir_bp(engine: Engine, *, row_limit: int = DEFAULT_ROW_LIMIT) -> B
             return jsonify({"error": "missing 'sql' field"}), 400
 
         if not _READ_ONLY_RE.match(sql):
-            return jsonify({"error": "only SELECT (or WITH ... SELECT) allowed — use /fenrir/execute for writes"}), 400
+            return jsonify({"error": "only SELECT (or WITH ... SELECT) allowed"}), 400
 
         try:
             with engine.connect().execution_options(
@@ -189,29 +195,5 @@ def create_fenrir_bp(engine: Engine, *, row_limit: int = DEFAULT_ROW_LIMIT) -> B
             "truncated": truncated,
             "row_limit": row_limit,
         })
-
-    # -- POST /fenrir/execute --------------------------------------------------
-
-    @bp.route("/execute", methods=["POST"])
-    @_require_auth
-    def execute():
-        body = request.get_json(silent=True) or {}
-        sql = body.get("sql", "").strip()
-
-        if not sql:
-            return jsonify({"error": "missing 'sql' field"}), 400
-
-        if _READ_ONLY_RE.match(sql):
-            return jsonify({"error": "SELECT not allowed here — use /fenrir/query"}), 400
-
-        try:
-            with engine.connect() as conn:
-                result = conn.execute(text(sql))
-                conn.commit()
-                affected = result.rowcount
-        except Exception as exc:
-            return jsonify({"error": str(exc)}), 422
-
-        return jsonify({"affected_rows": affected})
 
     return bp

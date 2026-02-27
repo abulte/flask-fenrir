@@ -31,11 +31,12 @@ Registers a `/fenrir/` blueprint with four endpoints, all behind bearer token au
 | `/fenrir/` | GET | App info, FENRIR.md contents, table list with row counts |
 | `/fenrir/schema` | GET | Full schema introspection (columns, types, PKs, FKs, indexes) |
 | `/fenrir/query` | POST | Read-only SQL (`SELECT` / `WITH ... SELECT`), returns rows as JSON |
-| `/fenrir/execute` | POST | Write SQL (`INSERT` / `UPDATE` / `DELETE`), returns affected row count |
 
 ### Authentication
 
 Every request requires `Authorization: Bearer <key>` where the key matches the `FENRIR_API_KEY` environment variable. If the env var isn't set, all requests return 401 (fail closed).
+
+When `FLASK_DEBUG` is on, auth is skipped entirely for convenience during local development.
 
 ### FENRIR.md
 
@@ -69,12 +70,12 @@ It serves a FENRIR.md file at GET /fenrir/ to give the LLM domain
 context it can't infer from the schema alone. That's the file you're
 writing now.
 
-The API is at http://localhost:5000/fenrir/. The key is in the
-FENRIR_API_KEY env var.
+The API is at /fenrir/. The key is in the FENRIR_API_KEY env var, passed
+as Authorization: Bearer <key> in the request headers.
 
 Read the codebase to understand the app's models, business logic, and
 domain. Then hit GET /fenrir/schema and POST /fenrir/query to see what
-the database actually looks like and sample some data.
+the database actually looks like from Fenrir POV.
 
 Compare what you learned from the code with what the schema and data
 show. Write a FENRIR.md that bridges the gap — focus on things an LLM
@@ -97,7 +98,7 @@ Ask me questions if anything in the code or data is unclear. Don't
 guess at business logic — it's better to ask than to document something
 wrong.
 
-This file will be maintained alongside the codebase. Keep it concise
+This file will need to be maintained alongside the codebase. Keep it concise
 and structured so it's easy to update when models change. If a section
 would go stale quickly, leave it out or note what to watch for.
 ```

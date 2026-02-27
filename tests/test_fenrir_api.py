@@ -99,6 +99,19 @@ class TestAuth:
         r = client.get("/fenrir/", headers={"Authorization": "Bearer anything"})
         assert r.status_code == 401
 
+    def test_debug_mode_skips_auth(self, app):
+        app.debug = True
+        with app.test_client() as c:
+            r = c.get("/fenrir/")
+            assert r.status_code == 200
+
+    def test_debug_mode_skips_auth_even_without_env_var(self, app):
+        os.environ.pop("FENRIR_API_KEY", None)
+        app.debug = True
+        with app.test_client() as c:
+            r = c.get("/fenrir/")
+            assert r.status_code == 200
+
 
 # ---------------------------------------------------------------------------
 # GET /fenrir/
@@ -259,62 +272,4 @@ class TestQuery:
         assert r.status_code == 422
 
 
-# ---------------------------------------------------------------------------
-# POST /fenrir/execute
-# ---------------------------------------------------------------------------
 
-
-class TestExecute:
-    def test_insert(self, client):
-        r = client.post(
-            "/fenrir/execute",
-            json={"sql": "INSERT INTO author (name) VALUES ('Pratchett')"},
-            headers=auth_headers(),
-        )
-        assert r.status_code == 200
-        data = r.get_json()
-        assert data["affected_rows"] == 1
-
-    def test_update(self, client):
-        r = client.post(
-            "/fenrir/execute",
-            json={"sql": "UPDATE author SET email = 'updated@test.com' WHERE name = 'Tolkien'"},
-            headers=auth_headers(),
-        )
-        assert r.status_code == 200
-        assert r.get_json()["affected_rows"] == 1
-
-    def test_delete(self, client):
-        # Insert then delete
-        client.post(
-            "/fenrir/execute",
-            json={"sql": "INSERT INTO author (name) VALUES ('temp')"},
-            headers=auth_headers(),
-        )
-        r = client.post(
-            "/fenrir/execute",
-            json={"sql": "DELETE FROM author WHERE name = 'temp'"},
-            headers=auth_headers(),
-        )
-        assert r.status_code == 200
-        assert r.get_json()["affected_rows"] == 1
-
-    def test_rejects_select(self, client):
-        r = client.post(
-            "/fenrir/execute",
-            json={"sql": "SELECT * FROM author"},
-            headers=auth_headers(),
-        )
-        assert r.status_code == 400
-
-    def test_missing_sql(self, client):
-        r = client.post("/fenrir/execute", json={}, headers=auth_headers())
-        assert r.status_code == 400
-
-    def test_bad_sql(self, client):
-        r = client.post(
-            "/fenrir/execute",
-            json={"sql": "INSERT INTO nonexistent (x) VALUES (1)"},
-            headers=auth_headers(),
-        )
-        assert r.status_code == 422
