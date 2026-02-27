@@ -60,18 +60,17 @@ The `/fenrir/` endpoint serves this content so the LLM can understand your app b
 
 #### Generating FENRIR.md with an LLM
 
-If the app already has fenrir-api enabled, you can bootstrap the file by giving an LLM the schema and a few sample rows. Here's a prompt that works:
+If the app is running locally with fenrir-api enabled, you can have an LLM generate the file. Run this prompt from the app's project root:
 
 ```
-I have a Flask app with fenrir-api enabled. Here's the schema:
+This app has fenrir-api enabled at http://localhost:5000/fenrir/.
+The API key is in the FENRIR_API_KEY env var.
 
-<paste output of GET /fenrir/schema>
+Hit GET /fenrir/schema to get the full schema, then run
+SELECT * FROM <table> LIMIT 5 via POST /fenrir/query for each table
+to see sample data.
 
-And here are a few sample rows per table:
-
-<paste a SELECT * FROM <table> LIMIT 5 for each table>
-
-Write a FENRIR.md for this app. It should include:
+Based on what you find, write a FENRIR.md in the project root with:
 - A heading with the app name and a one-line description
 - A "Domain concepts" section explaining each table, what the key fields
   mean, and any non-obvious values (enums, flags, special states)
