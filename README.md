@@ -66,21 +66,34 @@ If the app is running locally with fenrir-api enabled, you can have an LLM gener
 This app has fenrir-api enabled at http://localhost:5000/fenrir/.
 The API key is in the FENRIR_API_KEY env var.
 
-Hit GET /fenrir/schema to get the full schema, then run
-SELECT * FROM <table> LIMIT 5 via POST /fenrir/query for each table
-to see sample data.
+Read the codebase to understand the app's models, business logic, and
+domain. Then hit GET /fenrir/schema and POST /fenrir/query to see what
+the database actually looks like and sample some data.
 
-Based on what you find, write a FENRIR.md in the project root with:
-- A heading with the app name and a one-line description
-- A "Domain concepts" section explaining each table, what the key fields
-  mean, and any non-obvious values (enums, flags, special states)
-- A "Relationships" section describing how tables connect
-- A "Useful queries" section with 5-10 common queries an operator might run
-- A "Gotchas" section noting anything weird (nullable fields that shouldn't
-  be, implicit conventions, fields that mean something different than their
-  name suggests)
+Compare what you learned from the code with what the schema and data
+show. Write a FENRIR.md that bridges the gap — focus on things an LLM
+querying the database blind would NOT be able to figure out from the
+schema alone:
+- What the app actually does (one-liner)
+- What each table/field means in business terms
+- Non-obvious values: enums, flags, status codes, soft deletes, fields
+  whose names are misleading
+- How tables relate to each other (especially implicit relationships
+  not captured by foreign keys)
+- Common useful queries for an operator
+- Gotchas and edge cases
 
-Be concise. This file is read by an LLM at runtime, not humans.
+Don't repeat what's already obvious from column names and types.
+An LLM can read a schema — FENRIR.md should add the context it can't
+infer.
+
+Ask me questions if anything in the code or data is unclear. Don't
+guess at business logic — it's better to ask than to document something
+wrong.
+
+This file will be maintained alongside the codebase. Keep it concise
+and structured so it's easy to update when models change. If a section
+would go stale quickly, leave it out or note what to watch for.
 ```
 
 ### Row limit
