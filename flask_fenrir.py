@@ -1,5 +1,5 @@
 """
-fenrir-api — Drop-in Flask API for LLM agent access to SQLModel web apps.
+flask-fenrir — Drop-in Flask API for LLM agent access to SQLModel web apps.
 
 Usage:
     from flask_fenrir import create_fenrir_bp, secure_app

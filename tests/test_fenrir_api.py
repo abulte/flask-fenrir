@@ -1,4 +1,4 @@
-"""Tests for fenrir-api using a minimal Flask + SQLModel app with SQLite."""
+"""Tests for flask-fenrir using a minimal Flask + SQLModel app with SQLite."""
 
 from __future__ import annotations
 
