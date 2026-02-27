@@ -57,7 +57,7 @@ def secure_app(
     app: Flask,
     *,
     skip_paths: list[str] | None = None,
-    api_key_auth: dict[str, str] | None = None,
+    api_key_auth: dict[str, str | None] | None = None,
 ) -> None:
     """Add basic auth to all routes except /fenrir/ and static files.
 
@@ -92,8 +92,8 @@ def secure_app(
             return Response("Not configured", 503)
 
         # Check API key header if configured (for MCP / programmatic access)
-        if api_key_auth:
-            header_val = request.headers.get(api_key_auth["header"])
+        if api_key_auth and api_key_auth.get("secret"):
+            header_val = request.headers.get(api_key_auth.get("header", ""))
             if header_val and header_val == api_key_auth["secret"]:
                 return
 
