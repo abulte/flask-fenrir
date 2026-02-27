@@ -63,8 +63,14 @@ The `/fenrir/` endpoint serves this content so the LLM can understand your app b
 If the app is running locally with fenrir-api enabled, you can have an LLM generate the file. Run this prompt from the app's project root:
 
 ```
-This app has fenrir-api enabled at http://localhost:5000/fenrir/.
-The API key is in the FENRIR_API_KEY env var.
+This app uses fenrir-api — a small Flask blueprint that exposes the
+database to LLM agents via REST (schema introspection, read/write SQL).
+It serves a FENRIR.md file at GET /fenrir/ to give the LLM domain
+context it can't infer from the schema alone. That's the file you're
+writing now.
+
+The API is at http://localhost:5000/fenrir/. The key is in the
+FENRIR_API_KEY env var.
 
 Read the codebase to understand the app's models, business logic, and
 domain. Then hit GET /fenrir/schema and POST /fenrir/query to see what
