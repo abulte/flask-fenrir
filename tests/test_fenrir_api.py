@@ -12,7 +12,7 @@ from flask import Flask
 from sqlalchemy import create_engine
 from sqlmodel import Field, Session, SQLModel
 
-from fenrir_api import create_fenrir_bp, secure_app
+from flask_fenrir import create_fenrir_bp, secure_app
 
 # ---------------------------------------------------------------------------
 # Models

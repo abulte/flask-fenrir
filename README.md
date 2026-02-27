@@ -1,23 +1,23 @@
-# fenrir-api
+# flask-fenrir
 
 Drop-in Flask API for LLM agent access to SQLModel web apps. One install, two lines of code, one env var.
 
 ## Install
 
 ```bash
-uv add fenrir-api
+uv add flask-fenrir
 ```
 
 ## Usage
 
 ```python
-from fenrir_api import create_fenrir_bp
+from flask_fenrir import create_fenrir_bp
 
 app.register_blueprint(create_fenrir_bp(engine))
 ```
 
 ```python
-from fenrir_api import secure_app
+from flask_fenrir import secure_app
 
 secure_app(app)  # optional — adds basic auth to the whole app
 ```
@@ -81,10 +81,10 @@ The `/fenrir/` endpoint serves this content so the LLM can understand your app b
 
 #### Generating FENRIR.md with an LLM
 
-If the app is running locally with fenrir-api enabled, you can have an LLM generate the file. Run this prompt from the app's project root:
+If the app is running locally with flask-fenrir enabled, you can have an LLM generate the file. Run this prompt from the app's project root:
 
 ```
-This app uses fenrir-api — a small Flask blueprint that exposes the
+This app uses flask-fenrir — a small Flask blueprint that exposes the
 database to LLM agents via REST (schema introspection, read/write SQL).
 It serves a FENRIR.md file at GET /fenrir/ to give the LLM domain
 context it can't infer from the schema alone. That's the file you're
