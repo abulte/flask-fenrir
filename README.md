@@ -58,6 +58,32 @@ A brief description of what this app does.
 
 The `/fenrir/` endpoint serves this content so the LLM can understand your app before querying it.
 
+#### Generating FENRIR.md with an LLM
+
+If the app already has fenrir-api enabled, you can bootstrap the file by giving an LLM the schema and a few sample rows. Here's a prompt that works:
+
+```
+I have a Flask app with fenrir-api enabled. Here's the schema:
+
+<paste output of GET /fenrir/schema>
+
+And here are a few sample rows per table:
+
+<paste a SELECT * FROM <table> LIMIT 5 for each table>
+
+Write a FENRIR.md for this app. It should include:
+- A heading with the app name and a one-line description
+- A "Domain concepts" section explaining each table, what the key fields
+  mean, and any non-obvious values (enums, flags, special states)
+- A "Relationships" section describing how tables connect
+- A "Useful queries" section with 5-10 common queries an operator might run
+- A "Gotchas" section noting anything weird (nullable fields that shouldn't
+  be, implicit conventions, fields that mean something different than their
+  name suggests)
+
+Be concise. This file is read by an LLM at runtime, not humans.
+```
+
 ### Row limit
 
 By default, `/fenrir/query` caps results at 1000 rows. Override it:

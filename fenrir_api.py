@@ -13,7 +13,7 @@ import re
 from functools import wraps
 from pathlib import Path
 
-from flask import Blueprint, Response, current_app, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
 
