@@ -66,12 +66,13 @@ def secure_app(
 
     Args:
         app: Flask application.
-        skip_paths: Additional path prefixes to skip auth for (e.g. ["/health"]).
+        skip_paths: Additional path prefixes to skip auth for. /health is
+            excluded by default.
         api_key_auth: Optional dict with "header" and "secret" keys for API key
             auth (e.g. {"header": "X-API-Key", "secret": os.getenv("API_KEY")}).
             Allows programmatic access (MCP, etc.) with a separate secret.
     """
-    _skip = ["/fenrir/", "/static/"]
+    _skip = ["/fenrir/", "/static/", "/health"]
     if skip_paths:
         _skip.extend(skip_paths)
 

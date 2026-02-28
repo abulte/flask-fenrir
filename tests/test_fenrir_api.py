@@ -359,16 +359,16 @@ class TestSecureApp:
         r = secured_client.get("/dashboard")
         assert r.status_code == 503
 
-    # -- skip_paths --
+    # -- /health excluded by default --
 
-    def test_skip_paths(self, tmp_path):
+    def test_health_excluded_by_default(self, tmp_path):
         engine = create_engine("sqlite://")
         SQLModel.metadata.create_all(engine)
 
         app = Flask(__name__, root_path=str(tmp_path))
         app.config["TESTING"] = True
         app.register_blueprint(create_fenrir_bp(engine))
-        secure_app(app, skip_paths=["/health"])
+        secure_app(app)  # no skip_paths needed
 
         @app.route("/health")
         def health():
@@ -377,6 +377,27 @@ class TestSecureApp:
         os.environ["FENRIR_API_KEY"] = API_KEY
         with app.test_client() as c:
             r = c.get("/health")
+            assert r.status_code == 200
+        os.environ.pop("FENRIR_API_KEY", None)
+
+    # -- custom skip_paths --
+
+    def test_custom_skip_paths(self, tmp_path):
+        engine = create_engine("sqlite://")
+        SQLModel.metadata.create_all(engine)
+
+        app = Flask(__name__, root_path=str(tmp_path))
+        app.config["TESTING"] = True
+        app.register_blueprint(create_fenrir_bp(engine))
+        secure_app(app, skip_paths=["/public/"])
+
+        @app.route("/public/info")
+        def public_info():
+            return "ok"
+
+        os.environ["FENRIR_API_KEY"] = API_KEY
+        with app.test_client() as c:
+            r = c.get("/public/info")
             assert r.status_code == 200
         os.environ.pop("FENRIR_API_KEY", None)
 
