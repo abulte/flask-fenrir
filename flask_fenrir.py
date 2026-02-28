@@ -10,6 +10,7 @@ Usage:
 
 from __future__ import annotations
 
+import hmac
 import os
 import re
 from functools import wraps
@@ -45,7 +46,7 @@ def _require_auth(f):
             return jsonify({"error": "FENRIR_API_KEY not configured"}), 401
 
         auth = request.headers.get("Authorization", "")
-        if not auth.startswith("Bearer ") or auth[7:] != api_key:
+        if not auth.startswith("Bearer ") or not hmac.compare_digest(auth[7:], api_key):
             return jsonify({"error": "unauthorized"}), 401
 
         return f(*args, **kwargs)
@@ -72,7 +73,8 @@ def secure_app(
             auth (e.g. {"header": "X-API-Key", "secret": os.getenv("API_KEY")}).
             Allows programmatic access (MCP, etc.) with a separate secret.
     """
-    _skip = ["/fenrir/", "/static/", "/health"]
+    _skip = ["/fenrir/", "/static/"]
+    _skip_exact = {"/health"}
     if skip_paths:
         _skip.extend(skip_paths)
 
@@ -83,7 +85,7 @@ def secure_app(
 
         # Skip excluded paths
         path = request.path
-        if path == "/" or any(path.startswith(p) for p in _skip):
+        if any(path.startswith(p) for p in _skip) or path in _skip_exact:
             return
         if request.endpoint == "static":
             return
@@ -95,12 +97,12 @@ def secure_app(
         # Check API key header if configured (for MCP / programmatic access)
         if api_key_auth and api_key_auth.get("secret"):
             header_val = request.headers.get(api_key_auth.get("header", ""))
-            if header_val and header_val == api_key_auth["secret"]:
+            if header_val and hmac.compare_digest(header_val, api_key_auth["secret"]):
                 return
 
         # Check basic auth — any username, password must match FENRIR_API_KEY
         auth = request.authorization
-        if auth and auth.password == api_key:
+        if auth and auth.password and hmac.compare_digest(auth.password, api_key):
             return
 
         return Response(

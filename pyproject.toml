@@ -1,6 +1,6 @@
 [project]
 name = "flask-fenrir"
-version = "0.1.0"
+version = "0.3.0"
 description = "Drop-in Flask API for LLM agent access to SQLModel web apps"
 readme = "README.md"
 license = {text = "MIT"}

@@ -361,6 +361,27 @@ class TestSecureApp:
 
     # -- /health excluded by default --
 
+    def test_root_requires_auth(self, tmp_path):
+        engine = create_engine("sqlite://")
+        SQLModel.metadata.create_all(engine)
+
+        app = Flask(__name__, root_path=str(tmp_path))
+        app.config["TESTING"] = True
+        app.register_blueprint(create_fenrir_bp(engine))
+        secure_app(app)
+
+        @app.route("/")
+        def index():
+            return "ok"
+
+        os.environ["FENRIR_API_KEY"] = API_KEY
+        with app.test_client() as c:
+            r = c.get("/")
+            assert r.status_code == 401
+            r = c.get("/", headers=self._basic_auth_headers())
+            assert r.status_code == 200
+        os.environ.pop("FENRIR_API_KEY", None)
+
     def test_health_excluded_by_default(self, tmp_path):
         engine = create_engine("sqlite://")
         SQLModel.metadata.create_all(engine)
@@ -378,6 +399,26 @@ class TestSecureApp:
         with app.test_client() as c:
             r = c.get("/health")
             assert r.status_code == 200
+        os.environ.pop("FENRIR_API_KEY", None)
+
+    def test_health_is_exact_match(self, tmp_path):
+        """Paths like /healthcheck should NOT skip auth."""
+        engine = create_engine("sqlite://")
+        SQLModel.metadata.create_all(engine)
+
+        app = Flask(__name__, root_path=str(tmp_path))
+        app.config["TESTING"] = True
+        app.register_blueprint(create_fenrir_bp(engine))
+        secure_app(app)
+
+        @app.route("/healthcheck")
+        def healthcheck():
+            return "ok"
+
+        os.environ["FENRIR_API_KEY"] = API_KEY
+        with app.test_client() as c:
+            r = c.get("/healthcheck")
+            assert r.status_code == 401
         os.environ.pop("FENRIR_API_KEY", None)
 
     # -- custom skip_paths --
