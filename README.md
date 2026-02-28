@@ -134,6 +134,20 @@ app.register_blueprint(create_fenrir_bp(engine, row_limit=500))
 
 Just Flask (≥3.0) and SQLAlchemy (≥2.0). Works with any Flask + SQLAlchemy app — SQLModel not required at runtime.
 
+## Release
+
+```bash
+# 1. Bump version
+uv version --bump minor   # or --bump patch / --bump major
+
+# 2. Clean old artifacts and build
+rm -rf dist/*
+uv build
+
+# 3. Publish to PyPI
+uv publish dist/* --token "$PYPI_TOKEN"
+```
+
 ## License
 
 MIT
